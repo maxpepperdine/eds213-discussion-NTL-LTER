@@ -10,7 +10,6 @@ This repository is from an assignment completed in EDS 213 (Data & Database Mana
 |   └── ...
 ├── .gitignore                           # files to ignore when pushing to GitHub 
 ├── README.md                            # description of repository
-├── eds213-discussion-NTL-LTER.Rproj     # R project file
 ```
 
 ### Data access
