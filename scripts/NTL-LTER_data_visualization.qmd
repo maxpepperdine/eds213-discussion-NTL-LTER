@@ -1,0 +1,143 @@
+---
+title: "Visualizing the NTL LTER Data"
+author: "Maxwell Pepperdine"
+format: html
+editor: visual
+---
+
+## Load packages
+
+```{r}
+rm(list=ls())
+```
+
+```{r}
+library(tidyverse)
+library(DBI)
+library(duckdb)
+library(dbplyr)
+```
+
+## Background
+
+This script will initiate a connection with the `ntl_lter_database.db` to create a query that answers the following questions:
+
+-   What's the relationship between yearly ice duration in the Madison Lakes, WI area and the following meteorological data: `avg max air temp`, `avg min air temp`, `avg air temp`, `precip`, and `snow`.
+-   What are the average ice duration and meteorological data for the `ME` lake versus the `MO` lakes?
+
+#### Data
+
+\[insert info from readme\]
+
+The data was cleaned in R in the `NTL-LTER_data_cleaning.qmd` file, and then ingested into a DuckDB database This database is stored in the `database/ntl_lter_database.db` file.
+
+...
+
+## Connect to the NTL LTER database
+
+```{r}
+conn <- DBI::dbConnect(duckdb::duckdb(), dbdir = "database/ntl_lter_database.db")
+```
+
+#### Take a look at our tables
+
+```{r}
+DBI::dbListTables(conn)
+```
+
+## Make the queries
+
+Our queries will complete the following:
+
+-   join the two tables in the `ntl_lter_database.db` database: `ice_duration` and `yearly_iceszn_meteor_records`
+-   select each meteorological variable
+-   filter to create a new dataset that only includes the years 1950-2023 (this dataset will be compared against the full dataset that includes records from 1869-2023)
+-   compare the average ice duration and meteorological data between the `ME` and `MO` lakes
+
+#### Get each table
+
+```{r}
+ice_duration <- tbl(conn, "ice_duration")
+meteor_records <- tbl(conn, "yearly_iceszn_meteor_records")
+```
+
+```{r}
+# to view the tables as dataframes 
+
+# ice_duration_df <- ice_duration %>%
+#   collect()
+# meteor_records_df <- meteor_records %>%
+#   collect()
+```
+
+#### Make our queries with `dbplyr`
+
+###### Join the tables
+
+```{r}
+# join the two tables
+# add all meteorological variables to each ice duration record
+ntl_joined <- left_join(ice_duration, meteor_records, 
+                        by = c("year" = "year")) %>%
+  collect()
+```
+
+###### Filter to only include the years 1950-2023
+
+```{r}
+# make another table that only includes the years 1950-2023
+ntl_joined_1950_2023 <- ntl_joined %>%
+  filter(year >= 1950) %>%
+  collect()
+```
+
+###### Compare `ME` and `MO` lakes
+
+This query aims to answer the following question:
+
+-   How do the average ice duration and meteorological data (max air temp adjusted, min air temp adjusted, avg air temp adjusted, precip, snow) vary between the `ME` and `MO` lake?
+
+```{r}
+# generate an answer to our question
+ice_duration %>% 
+  left_join(meteor_records, 
+                        by = c("year" = "year")) %>% 
+  group_by(lakeid) %>%
+  summarise(avg_ice_duration = mean(duration, na.rm = TRUE),
+            avg_max_air_temp = mean(max_air_temp_adjusted, na.rm = TRUE),
+            avg_min_air_temp = mean(min_air_temp_adjusted, na.rm = TRUE),
+            avg_air_temp = mean(avg_air_temp_adjusted, na.rm = TRUE),
+            avg_precip_mm = mean(precip_raw_mm, na.rm = TRUE),
+            avg_snow_cm = mean(snow_raw_cm, na.rm = TRUE)) %>% 
+  show_query()
+```
+
+## Make some visualizations!
+
+#### Comparing the relationship between ice duration and the meteorological data
+
+Make a scatterplot of ice duration vs. each meteorological variable.
+
+```{r}
+# ice duration vs. avg max air temp
+
+# using all of the data
+ggplot(ntl_joined, aes(x = max_air_temp_adjusted, y = duration)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Ice duration vs. average max air temprature",
+       x = "Avg max air temp (°C) during ice season",
+       y = "Ice duration (days)") +
+  facet_wrap(~ lakeid) +
+  theme_bw()
+
+# using only the years 1950-2023
+ggplot(ntl_joined_1950_2023, aes(x = max_air_temp_adjusted, y = duration)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(title = "Ice duration vs. average max air temprature",
+       x = "Avg max air temp (°C) during ice season",
+       y = "Ice duration (days)") +
+  facet_wrap(~ lakeid) +
+  theme_bw()
+```

@@ -1,0 +1,125 @@
+---
+title: "NTL LTER Data Cleaning"
+author: "Maxwell Pepperdine"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Background 
+
+
+## Load packages
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+## Load data
+
+```{r}
+# Madison Wisconsin Daily Meteorological Data 1869 - current
+daily_meteor <- read_csv(here("data/discussion_data/daily_meteorological/ntl20_v13.csv"))
+
+
+# North Temperate Lakes LTER: Ice Duration - Madison Lakes Area 1853 - current
+ice_duration <- read_csv(here("data/discussion_data/ntl_ice_duration/ntl33_v12.csv"))
+```
+
+## Data cleaning
+
+#### Ice duration data
+
+````{r}
+# Check the structure of the ice duration data
+glimpse(ice_duration)
+
+# filter the data
+ice_duration <- ice_duration %>%
+  # keep only data b/w 1869 and 2023 to align with the meteorological data
+  filter(year >= 1869 & year <= 2023) %>% 
+  # remove the ice duration data from the Wisconsin lakes
+  filter(lakeid %in% c("MO", "ME"))
+```
+
+```{r}
+# save the cleaned ice duration data as a csv
+write_csv(ice_duration, here("data/discussion_data/processed/ice_duration_cleaned.csv"), 
+          append = FALSE)
+```
+
+
+#### Daily meteorological data
+
+```{r}
+# Check the structure of the daily meteorological data
+glimpse(daily_meteor)
+
+# change the year4 column name to year
+daily_meteor <- daily_meteor %>%
+  rename(year = year4)
+```
+
+- To make sure the meteorological data is in the same format as the ice duration data, we need to generate a new `year` variable that is the year of the ice season. 
+- In the ice duration data, the earliest ice_on to ice_off generally runs from November to April. 
+- We need to make a new column (`month`) that extracts the months from the `sampledate` column, and then filter the data to only include records from December to May.
+- We can then group the data by year, and calculate the mean of each variable during the "ice season" of each year.
+
+###### Add a month column
+
+Add a new month column and then filter the data to only include records from December to May. This will leave us with daily observations only from the "ice season".
+
+```{r}
+# create a new column called month that extracts the month from the sampledate column
+daily_meteor <- daily_meteor %>%
+  mutate(month = month(sampledate), 
+         .before = max_air_temp_adjusted)
+
+# filter the data to only include records from December to May
+daily_meteor_iceszn <- daily_meteor %>%
+  filter(month >= 11 | month <= 4)
+
+# check all unique values in the month column
+unique(daily_meteor_iceszn$month)
+```
+
+###### Summarise the data
+
+```{r}
+# group by year and calculate the mean or sum of each variable as appropriate
+yearly_meteor_iceszn <- daily_meteor_iceszn %>%
+  group_by(year) %>% 
+  summarise(
+    max_air_temp_adjusted = mean(max_air_temp_adjusted, na.rm = TRUE),
+    max_air_temp_raw = mean(max_air_temp_raw, na.rm = TRUE),
+    min_air_temp_adjusted = mean(min_air_temp_adjusted, na.rm = TRUE),
+    min_air_temp_raw = mean(min_air_temp_raw, na.rm = TRUE),
+    avg_air_temp_adjusted = mean(avg_air_temp_adjusted, na.rm = TRUE),
+    avg_air_temp_raw = mean(avg_air_temp_raw, na.rm = TRUE),
+    range_air_temp_adjusted = mean(range_air_temp_adjusted, na.rm = TRUE),
+    precip_raw_mm = sum(precip_raw_mm, na.rm = TRUE),
+    snow_raw_cm = sum(snow_raw_cm, na.rm = TRUE),,
+    snow_depth_cm = mean(snow_depth_cm, na.rm = TRUE),
+  )
+```
+
+```{r}
+# export the cleaned daily meteorological data as a csv
+write_csv(yearly_meteor_iceszn, here("data/discussion_data/processed/yearly_meteor_iceszn.csv"), 
+          append = FALSE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
