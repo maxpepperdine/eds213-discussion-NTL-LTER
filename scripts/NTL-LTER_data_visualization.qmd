@@ -3,6 +3,8 @@ title: "Visualizing the NTL LTER Data"
 author: "Maxwell Pepperdine"
 format: html
 editor: visual
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Load packages
@@ -16,27 +18,26 @@ library(tidyverse)
 library(DBI)
 library(duckdb)
 library(dbplyr)
+library(here)
 ```
 
 ## Background
 
 This script will initiate a connection with the `ntl_lter_database.db` to create a query that answers the following questions:
 
--   What's the relationship between yearly ice duration in the Madison Lakes, WI area and the following meteorological data: `avg max air temp`, `avg min air temp`, `avg air temp`, `precip`, and `snow`.
--   What are the average ice duration and meteorological data for the `ME` lake versus the `MO` lakes?
+- What are the average ice duration and meteorological data for the `ME` lake versus the `MO` lakes? (**primary question**)
+- What's the relationship between yearly ice duration in the Madison Lakes, WI area and the following meteorological data: `avg max air temp`, `avg min air temp`, `avg air temp`, `precip`, and `snow`? (**secondary question**)
 
 #### Data
 
-\[insert info from readme\]
+See the **Data Access** section of the `README.md` file for information on sourcing the datasets used in this analysis. The data queried and visualized here is from the `ice_duration` and `yearly_iceszn_meteor_records` tables in the `database/ntl_lter_database.db` database.
 
-The data was cleaned in R in the `NTL-LTER_data_cleaning.qmd` file, and then ingested into a DuckDB database This database is stored in the `database/ntl_lter_database.db` file.
-
-...
+These data were cleaned in R in the `NTL-LTER_data_cleaning.qmd` file, and then ingested into a DuckDB database This database is stored in the `database/ntl_lter_database.db` file.
 
 ## Connect to the NTL LTER database
 
 ```{r}
-conn <- DBI::dbConnect(duckdb::duckdb(), dbdir = "database/ntl_lter_database.db")
+conn <- DBI::dbConnect(duckdb::duckdb(), dbdir = here("database/ntl_lter_database.db"))
 ```
 
 #### Take a look at our tables
@@ -47,13 +48,6 @@ DBI::dbListTables(conn)
 
 ## Make the queries
 
-Our queries will complete the following:
-
--   join the two tables in the `ntl_lter_database.db` database: `ice_duration` and `yearly_iceszn_meteor_records`
--   select each meteorological variable
--   filter to create a new dataset that only includes the years 1950-2023 (this dataset will be compared against the full dataset that includes records from 1869-2023)
--   compare the average ice duration and meteorological data between the `ME` and `MO` lakes
-
 #### Get each table
 
 ```{r}
@@ -62,34 +56,14 @@ meteor_records <- tbl(conn, "yearly_iceszn_meteor_records")
 ```
 
 ```{r}
-# to view the tables as dataframes 
-
-# ice_duration_df <- ice_duration %>%
-#   collect()
-# meteor_records_df <- meteor_records %>%
-#   collect()
-```
-
-#### Make our queries with `dbplyr`
-
-###### Join the tables
-
-```{r}
-# join the two tables
-# add all meteorological variables to each ice duration record
-ntl_joined <- left_join(ice_duration, meteor_records, 
-                        by = c("year" = "year")) %>%
+# convert the tables to dfs to view the data easier
+ice_duration_df <- ice_duration %>%
+  collect()
+meteor_records_df <- meteor_records %>%
   collect()
 ```
 
-###### Filter to only include the years 1950-2023
-
-```{r}
-# make another table that only includes the years 1950-2023
-ntl_joined_1950_2023 <- ntl_joined %>%
-  filter(year >= 1950) %>%
-  collect()
-```
+#### Make our query with `dbplyr`
 
 ###### Compare `ME` and `MO` lakes
 
@@ -97,9 +71,11 @@ This query aims to answer the following question:
 
 -   How do the average ice duration and meteorological data (max air temp adjusted, min air temp adjusted, avg air temp adjusted, precip, snow) vary between the `ME` and `MO` lake?
 
+It will join the `ice_duration` and `yearly_iceszn_meteor_records` tables on the `year` column, and then group the data by `lakeid`. It will then calculate the average ice duration and meteorological data for each lake, returning a table with this information. 
+
 ```{r}
-# generate an answer to our question
-ice_duration %>% 
+# generate a query to answer our question
+ntl_joined <- ice_duration %>% 
   left_join(meteor_records, 
                         by = c("year" = "year")) %>% 
   group_by(lakeid) %>%
@@ -109,12 +85,84 @@ ice_duration %>%
             avg_air_temp = mean(avg_air_temp_adjusted, na.rm = TRUE),
             avg_precip_mm = mean(precip_raw_mm, na.rm = TRUE),
             avg_snow_cm = mean(snow_raw_cm, na.rm = TRUE)) %>% 
-  show_query()
+  collect()
+```
+
+#### Tidy the data for plotting 
+
+```{r}
+# pivot the data to tidy it for ggplot
+ntl_joined_long <- ntl_joined %>%
+  pivot_longer(cols = 2:7,
+               names_to = "meteor_variable",
+               values_to = "value")
 ```
 
 ## Make some visualizations!
 
+#### Average ice duration and meteorological data for each lake
+
+This visualization will show the average ice duration and meteorological data for the `ME` and `MO` lakes. It is associated with our primary question as stated above in the `Background` section of this script. 
+
+```{r}
+# reorder to put the ice duration first 
+ntl_joined_long <- ntl_joined_long %>%
+  mutate(meteor_variable = factor(meteor_variable, 
+                                  levels = c("avg_ice_duration", "avg_max_air_temp", 
+                                             "avg_min_air_temp", "avg_air_temp", 
+                                             "avg_precip_mm", "avg_snow_cm")))
+```
+
+```{r}
+# barplot of average ice duration and meteorological data
+ggplot(ntl_joined_long, aes(x = meteor_variable, y = value, 
+                            fill = lakeid)) +
+  geom_bar(stat = "identity", 
+           position = "dodge", 
+           col = "black", 
+           linewidth = 0.5) +
+  geom_text(aes(label = round(value, 2)), 
+            size = 3, 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.25) +
+  labs(title = "Average ice duration and meteorological data in Lake Mendota (ME) \nand Lake Monona (MO) (1869-2023)",
+       x = " ",
+       y = "Value", 
+       fill = " ") +
+  theme_bw() + 
+  scale_fill_manual(values = c("ME" = "skyblue4", "MO" = "cadetblue1")) +
+  scale_x_discrete(labels=c("avg_ice_duration"="Avg ice duration (days)",
+                             "avg_max_air_temp"="Avg max air temp (°C)",
+                             "avg_min_air_temp"="Avg min air temp (°C)",
+                             "avg_air_temp"="Avg air temp (°C)",
+                             "avg_precip_mm"="Precip (mm)",
+                             "avg_snow_cm"="Snow (cm)")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
 #### Comparing the relationship between ice duration and the meteorological data
+
+Additionally, we can explore the relationship between ice duration and the meteorological data to examine how the average ice duration in the `ME` and `MO` lakes varies with changing temperature, snow, etc. We will only examine average maximum air temperature since this isn't directly related to the assignment, but we could easily do this for all of the meteorological variables.
+
+This figure is associated with our secondary question question as described in the `Background` section of this script. It's not something that we aimed to answer with our main query above, but still an interesting relationship within the data that we can quickly explore!
+
+###### Join the tables
+
+```{r}
+# add all meteorological variables to each ice duration record
+ntl_joined2 <- left_join(ice_duration, meteor_records, 
+                        by = c("year" = "year")) %>%
+  collect()
+```
+
+###### Filter to only include the years 1950-2023
+
+```{r}
+# make another table that only includes the years 1950-2023
+ntl_joined_1950_2023 <- ntl_joined2 %>%
+  filter(year >= 1950) %>%
+  collect()
+```
 
 Make a scatterplot of ice duration vs. each meteorological variable.
 
@@ -122,10 +170,10 @@ Make a scatterplot of ice duration vs. each meteorological variable.
 # ice duration vs. avg max air temp
 
 # using all of the data
-ggplot(ntl_joined, aes(x = max_air_temp_adjusted, y = duration)) +
+ggplot(ntl_joined2, aes(x = max_air_temp_adjusted, y = duration)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  labs(title = "Ice duration vs. average max air temprature",
+  labs(title = "Ice duration vs. average max air temprature (1869-2023)",
        x = "Avg max air temp (°C) during ice season",
        y = "Ice duration (days)") +
   facet_wrap(~ lakeid) +
@@ -135,9 +183,29 @@ ggplot(ntl_joined, aes(x = max_air_temp_adjusted, y = duration)) +
 ggplot(ntl_joined_1950_2023, aes(x = max_air_temp_adjusted, y = duration)) +
   geom_point() +
   geom_smooth(method = "lm") +
-  labs(title = "Ice duration vs. average max air temprature",
+  labs(title = "Ice duration vs. average max air temprature (1950-2023)",
        x = "Avg max air temp (°C) during ice season",
        y = "Ice duration (days)") +
   facet_wrap(~ lakeid) +
   theme_bw()
 ```
+
+## Discussion 
+
+#### Primary question
+
+The average ice duration and meteorological data for the `ME` and `MO` lakes are shown in the barplot above. Overall, there's little variation between each of the variables explored. This was to be expected, as Lake Mendota (ME) and Lake Monona (MO) are located in close proximity to each other; however, it was still a fun exercise to explore the data and practice developing queries to answer questions of interest.
+
+#### Secondary question
+
+The scatterplots above show the relationship between ice duration and average maximum air temperature for the `ME` and `MO` lakes. The first plot shows the relationship between ice duration and average maximum air temperature for all of the data (1869-2023), while the second plot shows the same relationship but only for the years 1950-2023. In both plots, there's a clear negative correlation between average maximum air temperature and ice duration (i.e., as the average maximum air temperature increases, ice duration decreases). This makes sense intuitively, as warmer temperatures would lead to shorter ice duration. 
+
+
+
+
+
+
+
+
+
+
