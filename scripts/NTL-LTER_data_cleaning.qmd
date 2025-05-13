@@ -9,6 +9,7 @@ editor_options:
 
 ## Background 
 
+This script is used to clean the North Temperate Lakes Long Term Ecological Research (NTL LTER) data. Our goal is to clean the daily meteorological data and the ice duration data so that they can be used in our analysis and ingested into a relational database using `DuckDB`.
 
 ## Load packages
 
@@ -49,7 +50,6 @@ ice_duration <- ice_duration %>%
 write_csv(ice_duration, here("data/discussion_data/processed/ice_duration_cleaned.csv"), 
           append = FALSE)
 ```
-
 
 #### Daily meteorological data
 
