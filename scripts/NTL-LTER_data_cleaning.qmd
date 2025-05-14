@@ -9,7 +9,7 @@ editor_options:
 
 ## Background 
 
-This script is used to clean the North Temperate Lakes Long Term Ecological Research (NTL LTER) data. Our goal is to clean the daily meteorological data and the ice duration data so that they can be used in our analysis and ingested into a relational database using `DuckDB`.
+This script is used to clean the North Temperate Lakes Long Term Ecological Research (NTL LTER) data, consisting of the following two datasets: the daily meteorological data (`ntl20_v13.csv`) and the ice duration data (`ntl33_v12.csv`). Our goal is to both clean the datasets and wrangle them into a format where they can be joined by a primary/foreign key relationship, so that they can be used in our analysis and ingested into a relational database using `DuckDB`.
 
 ## Load packages
 
@@ -32,6 +32,10 @@ ice_duration <- read_csv(here("data/discussion_data/ntl_ice_duration/ntl33_v12.c
 ## Data cleaning
 
 #### Ice duration data
+
+To align with the data range of the meteorological data, we'll filter the ice duration data to only include records from 1869 to 2023.
+
+Additionally, Lake Wingra (`WI`) is missing a lot of data, so we'll only keep the records from the two lakes that have complete data over this period: Lake Mendota (`ME`) and Lake Monona (`MO`). It's generally preferred to retain as much data as possible, but for this specific database and analysis, we will remove it for consistency and to avoid any potential bias in the analysis.
 
 ````{r}
 # Check the structure of the ice duration data
@@ -57,7 +61,7 @@ write_csv(ice_duration, here("data/discussion_data/processed/ice_duration_cleane
 # Check the structure of the daily meteorological data
 glimpse(daily_meteor)
 
-# change the year4 column name to year
+# change the year4 column name to year to make joining easier
 daily_meteor <- daily_meteor %>%
   rename(year = year4)
 ```
@@ -65,7 +69,8 @@ daily_meteor <- daily_meteor %>%
 - To make sure the meteorological data is in the same format as the ice duration data, we need to generate a new `year` variable that is the year of the ice season. 
 - In the ice duration data, the earliest ice_on to ice_off generally runs from November to April. 
 - We need to make a new column (`month`) that extracts the months from the `sampledate` column, and then filter the data to only include records from December to May.
-- We can then group the data by year, and calculate the mean of each variable during the "ice season" of each year.
+- We can then group the data by year, and calculate the mean of each variable during the "ice season" of each year
+- We are only keeping the meteorological data during these defined "ice season" months (Nov-Apr) because the ice duration data is directly representative of these months.
 
 ###### Add a month column
 
@@ -81,11 +86,13 @@ daily_meteor <- daily_meteor %>%
 daily_meteor_iceszn <- daily_meteor %>%
   filter(month >= 11 | month <= 4)
 
-# check all unique values in the month column
+# check all unique values in the month column to QC
 unique(daily_meteor_iceszn$month)
 ```
 
 ###### Summarise the data
+
+Now that we have the data filtered to only include records from November to April, we can group the data by year and calculate the mean of each variable during the "ice season" of each year.
 
 ```{r}
 # group by year and calculate the mean or sum of each variable as appropriate

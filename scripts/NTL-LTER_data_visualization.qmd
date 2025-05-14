@@ -25,14 +25,14 @@ library(here)
 
 This script will initiate a connection with the `ntl_lter_database.db` to create a query that answers the following questions:
 
-- What are the average ice duration and meteorological data for the `ME` lake versus the `MO` lakes? (**primary question**)
-- What's the relationship between yearly ice duration in the Madison Lakes, WI area and the following meteorological data: `avg max air temp`, `avg min air temp`, `avg air temp`, `precip`, and `snow`? (**secondary question**)
+- What are the average ice duration and meteorological data for the `ME` lake versus the `MO` lakes between 1869-2023? (**primary question**)
+- What's the relationship between yearly ice duration in the Madison Lakes, WI area and `avg max air temp`? (**secondary question**)
 
 #### Data
 
-See the **Data Access** section of the `README.md` file for information on sourcing the datasets used in this analysis. The data queried and visualized here is from the `ice_duration` and `yearly_iceszn_meteor_records` tables in the `database/ntl_lter_database.db` database.
+See the **Data Access** section of the `README.md` file in this repository for information on sourcing the datasets used in this analysis. The data queried and visualized here is from the `ice_duration` and `yearly_iceszn_meteor_records` tables in the `database/ntl_lter_database.db` database.
 
-These data were cleaned in R in the `NTL-LTER_data_cleaning.qmd` file, and then ingested into a DuckDB database This database is stored in the `database/ntl_lter_database.db` file.
+These data were cleaned in R in the `NTL-LTER_data_cleaning.qmd` file, and then ingested into a database using `DuckDB`. This database is stored in the `database/ntl_lter_database.db` file.
 
 ## Connect to the NTL LTER database
 
@@ -69,7 +69,7 @@ meteor_records_df <- meteor_records %>%
 
 This query aims to answer the following question:
 
--   How do the average ice duration and meteorological data (max air temp adjusted, min air temp adjusted, avg air temp adjusted, precip, snow) vary between the `ME` and `MO` lake?
+-   How do the average ice duration and meteorological data (max air temp adjusted, min air temp adjusted, avg air temp adjusted, precip, snow) vary between the `ME` and `MO` lakes between 1869-2023?
 
 It will join the `ice_duration` and `yearly_iceszn_meteor_records` tables on the `year` column, and then group the data by `lakeid`. It will then calculate the average ice duration and meteorological data for each lake, returning a table with this information. 
 
@@ -140,9 +140,9 @@ ggplot(ntl_joined_long, aes(x = meteor_variable, y = value,
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-#### Comparing the relationship between ice duration and the meteorological data
+#### Comparing the relationship between ice duration and temperature
 
-Additionally, we can explore the relationship between ice duration and the meteorological data to examine how the average ice duration in the `ME` and `MO` lakes varies with changing temperature, snow, etc. We will only examine average maximum air temperature since this isn't directly related to the assignment, but we could easily do this for all of the meteorological variables.
+Additionally, we can explore the relationship between ice duration and the meteorological data to examine how the average ice duration in the `ME` and `MO` lakes varies with changing temperature. We will only examine average maximum air temperature since this isn't directly related to the assignment, but we could easily do this for all of the meteorological variables.
 
 This figure is associated with our secondary question question as described in the `Background` section of this script. It's not something that we aimed to answer with our main query above, but still an interesting relationship within the data that we can quickly explore!
 
@@ -164,7 +164,7 @@ ntl_joined_1950_2023 <- ntl_joined2 %>%
   collect()
 ```
 
-Make a scatterplot of ice duration vs. each meteorological variable.
+Make a scatter plot of ice duration vs. each meteorological variable.
 
 ```{r}
 # ice duration vs. avg max air temp
@@ -194,11 +194,11 @@ ggplot(ntl_joined_1950_2023, aes(x = max_air_temp_adjusted, y = duration)) +
 
 #### Primary question
 
-The average ice duration and meteorological data for the `ME` and `MO` lakes are shown in the barplot above. Overall, there's little variation between each of the variables explored. This was to be expected, as Lake Mendota (ME) and Lake Monona (MO) are located in close proximity to each other; however, it was still a fun exercise to explore the data and practice developing queries to answer questions of interest.
+The average ice duration and meteorological data for the `ME` and `MO` lakes are shown in the bar plot above. Overall, there's little variation between each of the variables explored. This was to be expected, as Lake Mendota (ME) and Lake Monona (MO) are located in close proximity to each other; however, it was still a fun exercise to explore the data and practice developing queries to answer questions of interest. Furthermore, this same workflow could be applied to other lakes or regions of interest, and the same queries could be used to explore other variables of interest.
 
 #### Secondary question
 
-The scatterplots above show the relationship between ice duration and average maximum air temperature for the `ME` and `MO` lakes. The first plot shows the relationship between ice duration and average maximum air temperature for all of the data (1869-2023), while the second plot shows the same relationship but only for the years 1950-2023. In both plots, there's a clear negative correlation between average maximum air temperature and ice duration (i.e., as the average maximum air temperature increases, ice duration decreases). This makes sense intuitively, as warmer temperatures would lead to shorter ice duration. 
+The scatter plots above show the relationship between ice duration and average maximum air temperature for the `ME` and `MO` lakes. The first plot shows the relationship between ice duration and average maximum air temperature for all of the data (1869-2023), while the second plot shows the same relationship but only for the years 1950-2023. In both plots, there's a clear negative correlation between average maximum air temperature and ice duration (i.e., as the average maximum air temperature increases, ice duration decreases). This makes sense intuitively, as warmer temperatures would lead to shorter ice duration. 
 
 
 

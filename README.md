@@ -7,7 +7,7 @@ This repository is from an assignment completed in EDS 213 (Data & Database Mana
 ### Repository organization
 ```
 ├── database  
-|   └── ntl_lter_database.db              # DuckDB database file containing the two NTL LTER tables
+|   └── ntl_lter_database.db              # database file containing the two NTL LTER tables
 ├── scripts 
 |   └── database_ingestion_query.sql      # SQL script to create database and query
 |   └── NTL-LTER_data_cleaning.qmd        # script to clean and wrangle the raw LTER data
