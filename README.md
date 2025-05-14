@@ -20,14 +20,14 @@ This repository is from an assignment completed in EDS 213 (Data & Database Mana
 ### Data access
 Two datasets are used in this analysis: (1) [North Temperate Lakes LTER: Ice Duration - Madison Lakes Area 1853 - current](https://portal.edirepository.org/nis/mapbrowse?scope=knb-lter-ntl&identifier=33&revision=39); (2) [Madison Wisconsin Daily Meteorological Data 1869 - current](https://portal.edirepository.org/nis/mapbrowse?scope=knb-lter-ntl&identifier=20&revision=37). Both datasets were sourced from the [Environmental Data Initiative](https://portal.edirepository.org/nis/home.jsp) portal.
 
-The data is too large to be included in this repository, but can be downloaded from the links above and cleaned appropriately to reproduce this analysis following the steps in the `NTL-LTER_data_cleaning.qmd` script. The daily meteoriological data is the `ntl20_v13.csv` file and the ice duration data is the `ntl33_v12.csv` file. 
+The data is too large to be included in this repository, but can be downloaded from the links above and cleaned appropriately to reproduce this analysis following the steps in the `NTL-LTER_data_cleaning.qmd` script. In that script, the daily meteorological data is the `ntl20_v13.csv` file and the ice duration data is the `ntl33_v12.csv` file. 
 
 The cleaned data can then be ingested into a DuckDB database using the SQL script `database_ingestion_query.sql`. The cleaned meteorological data is saved as `yearly_iceszn_meteor_records` and the cleaned ice duration data is saved as the `ice_duration` table. The SQL script will create a relational database called `ntl_lter_database.db` with these two tables.
 
 ### Acknowledgements 
 This assignment was created and organized by Annie Adams, Julien Brun, and Greg Janée for EDS 213. EDS 213 (Data & Database Management) is a course offered in the [MEDS](https://bren.ucsb.edu/masters-programs/master-environmental-data-science) program at the Bren School of Environmental Science & Management.
 
-### References
+### Data citations
 Anderson, L., D.M. Robertson, and National Weather Service. 2024. Madison Wisconsin Daily Meteorological Data 1869 - current ver 37. Environmental Data Initiative. https://doi.org/10.6073/pasta/cf3c226d82e8885b9cd0a55908226cc3 (Accessed 2025-04-15).
 
 Magnuson, J.J., S.R. Carpenter, and E.H. Stanley. 2024. North Temperate Lakes LTER: Ice Duration - Madison Lakes Area 1853 - current ver 39. Environmental Data Initiative. https://doi.org/10.6073/pasta/7ef5d8a32c65439fd903a9cbeeacb23a (Accessed 2025-04-15).
