@@ -14,6 +14,7 @@ This repository is from an assignment completed in EDS 213 (Data & Database Mana
 |   └── NTL-LTER_data_visualization.qmd   # script to create data visualizations of the cleaned data
 ├── .gitignore                            # files to ignore when pushing to GitHub 
 ├── README.md                             # description of repository
+├── dep_env_req.txt                       # list of dependencies and environments used for the project
 ```
 
 ### Data access
